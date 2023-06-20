@@ -1,0 +1,48 @@
+const { PDFDocument } = require('pdf-lib');
+const Docxtemplater = require('docxtemplater');
+
+function convertDocxToPdf(docxPath, outputPath) {
+  return new Promise((resolve, reject) => {
+    // Leggi il contenuto del file .docx
+    const fileContent = fs.readFileSync(docxPath, 'binary');
+    const doc = new Docxtemplater();
+    doc.loadZip(fileContent);
+
+    // Rendi il documento modificabile
+    doc.setData({});
+
+    try {
+      doc.render();
+    } catch (error) {
+      reject(error);
+    }
+
+    const buffer = doc.getZip().generate({ type: 'nodebuffer' });
+
+    // Crea un nuovo documento PDF
+    const pdfDoc = PDFDocument.create();
+
+    // Aggiungi una pagina vuota al documento
+    pdfDoc.addPage();
+
+    // Carica il contenuto del file DOCX nel documento PDF
+    const fileStream = pdfDoc.embedPdf(buffer);
+
+    // Salva il documento PDF nel percorso specificato
+    const writeStream = fs.createWriteStream(outputPath);
+    fileStream.pipe(writeStream);
+
+    writeStream.on('finish', () => {
+      console.log('File .docx convertito in PDF:', outputPath);
+      resolve();
+    });
+
+    writeStream.on('error', (error) => {
+      console.error('Errore durante il salvataggio del file PDF:', error);
+      reject(error);
+    });
+
+    // Chiudi il documento PDF
+    pdfDoc.end();
+  });
+}
